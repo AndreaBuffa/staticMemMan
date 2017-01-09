@@ -3,6 +3,9 @@
 
 #include "stdint.h"
 
+/**
+* 
+*/
 uint32_t memInit(void* const handle, const uint32_t sizeInByte);
 
 uint32_t memAlloc(void* const handle, const uint32_t size, void* ptr);
