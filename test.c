@@ -33,6 +33,13 @@ int main(void) {
 		goto error;
 	}
 
+	printf("Test Allocations 2\n");
+	if (0 != memAlloc((void*)buffer, 1, pointer)) {
+		line = __LINE__;
+		goto error;		
+	}
+
+	memDump((void*)buffer);
 	printf("SUCCESS!!!!!!!!\n");
 	return 0;
 
