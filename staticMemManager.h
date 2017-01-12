@@ -5,6 +5,11 @@
 
 /**
 * 
+* lenght | blocks pointers list |
+* ----------------------------------------------------------------------
+* |0x2800|   pBlock1..pBlok9    |                                      |
+* ----------------------------------------------------------------------
+* (32bits)    ( 9 * 32bits)
 */
 uint32_t memInit(void* const handle, const uint32_t sizeInByte);
 
