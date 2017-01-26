@@ -46,11 +46,14 @@ uint32_t memInit(void * const handle, const uint32_t sizeInByte) {
 	return 0;
 }
 
-int32_t searchBitmap(uint64_t * const pBitmap, uint32_t steps, 
+/**
+ * implements a recursive visit of the allocation bitmap, looking 
+ * for a 'size' number of adjacent blocks (1s) 
+ */
+int32_t searchBitmap(uint64_t * const pBitmap, int32_t bitmapLen, 
 					 const uint32_t size, const uint8_t strict) {
-	if (steps == 0)
+	if (bitmapLen <= 0)
 		return -1;
-	steps--;
 
 	uint64_t sizeBitmap = 0xFFFFFFFFFFFFFFFF;
 	// if size is 3, sizeBitmap is 111
@@ -61,7 +64,10 @@ int32_t searchBitmap(uint64_t * const pBitmap, uint32_t steps,
 		if (size <= 64)
 			return 0;
 		else 
-			return searchBitmap(pBitmap + 1, steps, size - 64, 1);
+			return searchBitmap(pBitmap + 1,
+								bitmapLen - 64,
+								size - 64,
+								1);
 	} else {
 		if (strict == 1) {
 			return -1;
@@ -70,13 +76,16 @@ int32_t searchBitmap(uint64_t * const pBitmap, uint32_t steps,
 		uint32_t offset = 1;
 		sizeBitmap = sizeBitmap << 1;
 
-		while (offset < 64) {
+		while (offset < MIN(64, bitmapLen)) {
 			//printf("SEARCH PATT %16lx\n", sizeBitmap);
 			if ((*pBitmap & sizeBitmap) == sizeBitmap) {
 				//printf("FOUND size %d, offset %d\n", size, offset);
 				int remainder = size - 64 - offset;
 				if (remainder > 0) {
-					int32_t ret = searchBitmap(pBitmap + 1, steps, remainder, 1);
+					int32_t ret = searchBitmap(pBitmap + 1,
+					                           bitmapLen - 64,
+					                           remainder, 1);
+
 					return ((ret == 0) ? offset : -1);
 				}
 				return offset;
@@ -85,7 +94,10 @@ int32_t searchBitmap(uint64_t * const pBitmap, uint32_t steps,
 			offset++;
 		}
 		if (offset == 64) {
-			return 64 + searchBitmap(pBitmap + 1, steps, size, 0);
+			return 64 + searchBitmap(pBitmap + 1,
+			                         bitmapLen - 64,
+			                         size,
+			                         0);
 		}
 	}
 	return -1;
@@ -105,7 +117,7 @@ uint32_t memAlloc(void * const handle, const uint32_t size, void * ptr) {
 	uint32_t wordIt = 0, offset = 0;
 	// block index 0-n
 	uint32_t startIndex = 0;
-	if ((startIndex = searchBitmap(pBitmap, numWords, size, 0)) == -1)
+	if ((startIndex = searchBitmap(pBitmap, totBlocks, size, 0)) == -1)
 		return 5;
 
 	// update allocation bitmap
