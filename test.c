@@ -3,7 +3,8 @@
 
 #define BUFFER_SIZE_1 10240
 //#define BUFFER_SIZE_2 0x2000000
-#define BUFFER_SIZE_2 0x10400
+//#define BUFFER_SIZE_2 0x10400
+#define BUFFER_SIZE_2 0x102400
 char smallBuffer[BUFFER_SIZE_1];
 char bigBuffer[BUFFER_SIZE_2];
 
@@ -115,8 +116,6 @@ int test(void* pBuf, uint32_t size) {
 		goto error;
 	}
 
-	//memDump((void*)pBuf, 1);
-	printf("SUCCESS!!!!!!!!\n");
 	return 0;
 
 error:
@@ -135,21 +134,49 @@ test2(void* pBuf, uint32_t size) {
 
 	memInit((void*)pBuf, size);
 
-	printf("Test memAlloc 40 blocks 1\n");
-	if (0 != memAlloc((void*)pBuf, 40, &p1)) {
+	uint32_t chunkSize = 40;
+	printf("Test memAlloc %d blocks 1\n", chunkSize);
+	if (0 != memAlloc((void*)pBuf, chunkSize, &p1)) {
 		line = __LINE__;
 		goto error;
 	}
 
-	printf("Test memAlloc 40 blocks 2\n");
-	if (0 != memAlloc((void*)pBuf, 40, &p2)) {
+	chunkSize = 24;
+	printf("Test memAlloc %d blocks \n", chunkSize);
+	if (0 != memAlloc((void*)pBuf, chunkSize, &p2)) {
 		line = __LINE__;
 		goto error;
 	}
 
-	memDump((void*)pBuf, 1);
+	chunkSize = 64;
+	printf("Test memAlloc %d blocks \n", chunkSize);
+	if (0 != memAlloc((void*)pBuf, chunkSize, &p3)) {
+		line = __LINE__;
+		goto error;
+	}
+
+	chunkSize = 64;
+	printf("Test memAlloc %d blocks \n", chunkSize);
+	if (0 != memAlloc((void*)pBuf, chunkSize, &p4)) {
+		line = __LINE__;
+		goto error;
+	}
+
+	printf("Test MemFree p3. Deleting 0x%X\n", p3);
+	if (0 != memFree((void*)pBuf, &p3)) {
+		line = __LINE__;
+		goto error;
+	}
+
+	chunkSize = 65;
+	printf("Test memAlloc %d blocks \n", chunkSize);
+	if (0 != memAlloc((void*)pBuf, chunkSize, &p5)) {
+		line = __LINE__;
+		goto error;
+	}
 
 	return 0;
+
 error:
 	memDump((void*)pBuf, 0);
 	printf("Test at line %d FAILED\n", line);
@@ -158,8 +185,11 @@ error:
 
 int main(void) {
 	if (0 != test(smallBuffer, BUFFER_SIZE_1)) {
+		//	memDump((void*)pBuf, 1);
 		goto error;
 	}
+
+	//memDump((void*)smallBuffer, BUFFER_SIZE_1);
 
 	printf("Use another buffer *********\n");
 	if (0 != test(bigBuffer, BUFFER_SIZE_2)) {
@@ -170,6 +200,7 @@ int main(void) {
 		goto error;
 	}
 
+	//memDump((void*)bigBuffer, 1);
 	printf("SUCCESS!!!!!!!!\n");
 	return 0;
 error:
