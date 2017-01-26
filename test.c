@@ -2,9 +2,9 @@
 #include "staticMemManager.h"
 
 #define BUFFER_SIZE_1 10240
-//#define BUFFER_SIZE_2 0x2000000
+#define BUFFER_SIZE_2 0x2000000
 //#define BUFFER_SIZE_2 0x10400
-#define BUFFER_SIZE_2 0x102400
+//#define BUFFER_SIZE_2 0x102400
 char smallBuffer[BUFFER_SIZE_1];
 char bigBuffer[BUFFER_SIZE_2];
 
@@ -15,6 +15,7 @@ int test(void* pBuf, uint32_t size) {
 	uint32_t* p2 = 0;
 	uint32_t* p3 = 0;
 	printf("Buffer pointer 0x%X\n", pBuf);
+
 	memInit((void*)pBuf, size);
 
 	memDump((void*)pBuf, 1);
@@ -65,7 +66,6 @@ int test(void* pBuf, uint32_t size) {
 	for(uint32_t i = 0; i < (4 * 1024 / 4); i++) {
 		*(p2 + i) = i;
 		//printf("0x%X, val %d \n", p2 + i, *(p2 + i));
-
 	}
 
 	// check p1 data
@@ -174,7 +174,7 @@ test2(void* pBuf, uint32_t size) {
 		line = __LINE__;
 		goto error;
 	}
-
+	//memDump((void*)pBuf, 1);
 	return 0;
 
 error:

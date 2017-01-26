@@ -23,11 +23,11 @@
 * Allocation scheme.
 * For the example above, the buffer can hold at most 9 1024B blocks.
 *
-* The first 32bits word is the size of the buffer. The following words
+* The first 64bits word is the size of the buffer. The following words
 * are used for the allocation bitmap (1 == free, 0 == used). In this case
-* one word is enought beacause we have a total number of blocks equal to
-* 9. Then, 9 words are use to store the pointers to the corresponding
-* blocks inside the buffer
+* one word is enought because we have a total number of blocks equal to
+* 9. Then, 9 words are used to store the pointers to the corresponding
+* blocks inside the buffer.
 *
 *
 * 

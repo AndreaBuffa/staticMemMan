@@ -4,7 +4,6 @@
 #include "staticMemManager.h"
 
 #define BLK_SIZE 1024
-//#define GET_NUM_BLOCKS(numBytes) 32 * numBytes / (1032 * 32 + 1);
 #define GET_NUM_BLOCKS(numBytes) 64 * (numBytes - 8) / (1032 * 64 + 1);
 #define GET_NUM_WORDS(numBlocks) (numBlocks % 64 == 0) ? numBlocks / 64 : numBlocks / 64 + 1;
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
@@ -14,7 +13,7 @@ uint32_t memInit(void * const handle, const uint32_t sizeInByte) {
 	if (!handle)
 		return 1;
 
-	if  ((sizeInByte % 1024 != 0) || (sizeInByte <= BLK_SIZE))
+	if  ((sizeInByte % BLK_SIZE != 0) || (sizeInByte <= BLK_SIZE))
 		return 2;
 
 	uint64_t* pHandle = (uint64_t*)handle;
@@ -38,9 +37,9 @@ uint32_t memInit(void * const handle, const uint32_t sizeInByte) {
 
 	uint64_t* pBlocks = pHandle + 1;
 	uint64_t* pFirstBlock = (uint64_t*)handle + \
-		sizeInByte / 8 - (numBlocks * 1024 / 8);
+		sizeInByte / 8 - (numBlocks * BLK_SIZE / 8);
 	for (uint64_t blockIt = 0; blockIt < numBlocks; blockIt++) {
-		*(pBlocks + blockIt) = (uint64_t)(pFirstBlock + (1024 * blockIt / 8));
+		*(pBlocks + blockIt) = (uint64_t)(pFirstBlock + (BLK_SIZE * blockIt / 8));
 		//printf("0x%x\n", (uint32_t)(pFirstBlock + (1024 * blockIt / 4)));
 	}
 
@@ -56,8 +55,8 @@ int32_t searchBitmap(uint64_t * const pBitmap, uint32_t steps,
 	uint64_t sizeBitmap = 0xFFFFFFFFFFFFFFFF;
 	// if size is 3, sizeBitmap is 111
 	sizeBitmap = (size < 64) ? ((1L << size) - 1) : sizeBitmap;
-	printf("CURR   BITM %lx\n", *pBitmap);
-	printf("SEARCH PATT %16lx\n", sizeBitmap);
+	//printf("CURR   BITM %lx\n", *pBitmap);
+	//printf("SEARCH PATT %16lx\n", sizeBitmap);
 	if ((*pBitmap & sizeBitmap) == sizeBitmap) {
 		if (size <= 64)
 			return 0;
@@ -72,9 +71,9 @@ int32_t searchBitmap(uint64_t * const pBitmap, uint32_t steps,
 		sizeBitmap = sizeBitmap << 1;
 
 		while (offset < 64) {
-			printf("SEARCH PATT %16lx\n", sizeBitmap);
+			//printf("SEARCH PATT %16lx\n", sizeBitmap);
 			if ((*pBitmap & sizeBitmap) == sizeBitmap) {
-				printf("FOUND size %d, offset %d\n", size, offset);
+				//printf("FOUND size %d, offset %d\n", size, offset);
 				int remainder = size - 64 - offset;
 				if (remainder > 0) {
 					int32_t ret = searchBitmap(pBitmap + 1, steps, remainder, 1);
@@ -102,7 +101,9 @@ uint32_t memAlloc(void * const handle, const uint32_t size, void * ptr) {
 		return 3;
 	}
 	uint32_t numWords = GET_NUM_WORDS(totBlocks);
-	uint32_t wordIt = 0, offset = 0, found = 0;
+	// bitmap word index and offset inside that word
+	uint32_t wordIt = 0, offset = 0;
+	// block index 0-n
 	uint32_t startIndex = 0;
 	if ((startIndex = searchBitmap(pBitmap, numWords, size, 0)) == -1)
 		return 5;
@@ -111,35 +112,36 @@ uint32_t memAlloc(void * const handle, const uint32_t size, void * ptr) {
 	uint64_t sizeBitmap = 0xFFFFFFFFFFFFFFFF;
 	wordIt = startIndex / 64;
 	offset = startIndex % 64;
-	printf("FOUND start %d, word %d, offset %d\n", startIndex, wordIt, offset);
+	//printf("FOUND start %d, word %d, offset %d\n", startIndex, wordIt, offset);
 	uint32_t remainder = size;
+	pBitmap = pBitmap + wordIt;
 	while (remainder > 0) {
 		if (startIndex > (wordIt + 1) * 64) {
 			// the first word
 			sizeBitmap = 0xFFFFFFFFFFFFFFFF << offset;
 			//printf("PATT %lx\n", sizeBitmap);
-			*(pBitmap + wordIt++) ^= sizeBitmap;
+			*pBitmap ^= sizeBitmap;
 			remainder -= offset;
+			pBitmap++;
 		} else {
 			if (remainder >= 64) {
 				remainder -= MIN(64, size);
-				*(pBitmap + wordIt++) ^= sizeBitmap;
+				*pBitmap ^= sizeBitmap;
 			} else {
 				sizeBitmap = (1L << remainder) - 1;
 				sizeBitmap = sizeBitmap << offset;
-				*(pBitmap + wordIt++) ^= sizeBitmap;
-				//printf("TEST %lx\n", sizeBitmap);
+				*pBitmap ^= sizeBitmap;
 				remainder = 0;
 			}
+			pBitmap++;
 		}
-		printf("WRITE %lx\n", sizeBitmap);
 	}
 
 	// update the pointers area.
 	uint64_t* pBlocks = pHandle + 1 + numWords;
 	uint32_t blockIt = 0;
 	uint64_t* pNew = pHandle + (*pHandle / 8) - \
-		(totBlocks * 1024 / 8) + startIndex * 1024 / 8;
+		(totBlocks * BLK_SIZE / 8) + startIndex * BLK_SIZE / 8;
 
 	while (blockIt < size) {
 		*((pBlocks + wordIt * 64 + offset + blockIt)) = (uint64_t)pNew ;
@@ -161,7 +163,7 @@ uint32_t memFree(void * const handle, const void* ptr) {
 		if ((*(pBlocks + idx)) == (*(uint64_t*)ptr)) {
 			//printf("PT %x, idx %d\n", *(pBlocks + idx), idx);
 			*(pBlocks + idx) = (uint64_t)(pHandle + (*pHandle / 8) - \
-				(totBlocks * 1024 / 8) + (idx * 1024 / 8));
+				(totBlocks * BLK_SIZE / 8) + (idx * BLK_SIZE / 8));
 			if (!found) {
 				chunkStart = idx;
 			}
@@ -175,7 +177,6 @@ uint32_t memFree(void * const handle, const void* ptr) {
 	if (!found)
 		return 4;
 	uint64_t sizeBitmap = ((1 << chunkLen) - 1);
-	//printf("FOUND sizeBitmap %x\n", sizeBitmap);
 	// get the word containing the bitmap to be updated
 	*(pBitmap + (chunkStart / 64)) |= sizeBitmap << (chunkStart % 64);
 	return 0;
@@ -205,7 +206,6 @@ uint32_t memDump(void* const handle, uint32_t verb) {
 		}
 		printf("\n");
 	}
-	//printf("memDump Allocated blocks: %d\n", (32 * (*pHandle) / (1028 * 32 + 1)));
 	return 0;
 }
 
