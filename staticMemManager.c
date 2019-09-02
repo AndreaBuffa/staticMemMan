@@ -20,7 +20,7 @@ uint32_t memInit(void * const handle, const uint32_t sizeInByte) {
 	*pHandle = sizeInByte;
 	// 1024x + 8x + x/64 + 8 = sizeInByte
 	const uint32_t numBlocks = GET_NUM_BLOCKS(sizeInByte);
-	// the number of bits required for storing the status of a mem block
+	// the number of words required for storing the allocation bitmap
 	const uint32_t numWords = GET_NUM_WORDS(numBlocks);
 	uint32_t idx = 0, remBits = numBlocks;
 
